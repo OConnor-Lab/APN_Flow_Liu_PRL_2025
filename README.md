@@ -9,6 +9,8 @@ Analysis_Plots.ipynb: A Jupyter Notebook that provides a guided analysis workflo
 
 data/: A directory containing the processed data files required for generating plots. Note: Raw simulation data files are not included due to space constraints.
 
+example_script/: A directory including example LAMMPS input scripts and data files for simulating APNs with 18kT stickers under both equilibrium NVT and uniaxial extensional flow conditions. For details regarding polymer chain architecture and simulation methodology, please refer to the method in our paper.
+
 ### LAMMPS Version and Required Packages
 
 This analysis is based on LAMMPS version lammps-29Sep2021. The following LAMMPS packages are required:

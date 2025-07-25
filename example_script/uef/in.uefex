@@ -1,0 +1,89 @@
+# LAMMPS input scipts for simulating APNs under uniaxial extensional flow
+
+# NOTE: These are not intended to represent real materials
+
+units           lj
+atom_style      molecular
+boundary        p p p
+dimension	3
+
+# read data from equilibrium restart file
+read_restart	./eq_18kT_DA.restart
+change_box	all triclinic
+
+reset_timestep	0
+
+#Define time and rate paramters
+variable	rate equal 1e-5
+variable	xrate equal ${rate}/2.0
+variable	stot equal 10.0 # total strain
+variable	dt equal 0.005 # timestep
+#Total Runtime should reach true strain of 10
+variable	Ttot equal ceil(${stot}/${rate}/dt)
+#Dumps should be output every true strain (0.1) #same size as large dumps 
+variable	dint equal floor(0.1/${rate}/dt)
+#thermodynamic output should be generated every 1e-2 strain
+variable	thint equal floor(0.01/${rate}/dt)
+variable	time equal step*dt
+
+variable	name string "18kT_DA_UEF"
+log		log.${name}
+
+
+#Define bonded and nonbonded interaction
+bond_style      fene
+special_bonds   fene
+bond_coeff	* 30.0 1.5 1.0 1.0
+angle_style	cosine
+angle_coeff	* 1.5
+
+pair_style      hybrid/overlay lj/cut 1.1225 tersoff
+pair_coeff      * * tersoff bead2.tersoff NULL B1  # make B1 & B2 tersoff but not B1
+pair_coeff 	    * * lj/cut 0.0 1.0 1.1225  # clear all fene potential
+pair_coeff 	    1 * lj/cut 1.0 1.0 1.1225  # make type 1 to others in normal fene potential
+
+#Use GKR (UEF) SLLOD Thermostat
+fix	    1 all nvt/uef temp 1.0 1.0 10.0 erate -${xrate} -${xrate}
+fix     2 all momentum 100 linear 1 1 1
+
+##### scripts for equilibrating the system
+#fix		 1 all nve
+#fix		 2 all langevin 1 1 100 1234
+#fix		 3 all momentum 100 linear 1 1 1
+#fix 		 4 all recenter INIT INIT INIT units box
+
+timestep        ${dt}
+neighbor        0.3 bin
+neigh_modify    every 1 delay 0 check yes
+
+run 0
+#UEF defines a flow frame pressure & temperature compute
+variable	eps equal ${rate}*v_time
+variable 	temp equal c_1_temp
+variable 	epair equal epair
+variable 	emol equal emol
+variable	etot equal etotal
+variable    	freq string 1000
+
+compute     	be all pe/atom bond
+compute	rmatrix all rotation/uefex
+
+#thermo output
+thermo		${thint}
+thermo_style    custom step v_eps v_temp epair emol etotal c_1_press[*] c_rmatrix[*]
+thermo_modify   norm no
+
+#define output file with state variables
+fix	state_out all ave/time 1 ${thint} ${thint} v_eps v_temp v_epair v_emol v_etot c_1_press[*] ave one file ${name}_sv.out
+#define output file for rotation matrix
+fix   rotation_out all ave/time 1 1 ${dint} c_rmatrix[*] file ${name}_rotation.out
+
+restart	100000 cpA.restart cpB.restart
+dump    	1 all netcdf ${dint} dump.nc id type mol x y z vx vy vz ix iy iz c_be
+
+group sticker type 2
+dump    	2 sticker netcdf 100000 dump_sticker.nc id type mol x y z vx vy vz ix iy iz c_be
+
+run             ${Ttot}
+write_restart restart.${name}
+write_data    data.${name}
