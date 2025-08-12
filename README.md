@@ -1,4 +1,4 @@
-# APN_Flow_Liu_Arxiv_2025
+# APN_Flow_Liu_PRL_2025
 Data Repository for MD simulation study of associative polymer networks in extensional flow by Liu &amp; O'Connor.
 
 This repository contains the scripts and data necessary for analyzing associative polymer networks (APNs) simulations and generating plots for the associated manuscript.
